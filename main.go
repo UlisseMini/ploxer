@@ -42,6 +42,7 @@ func check() {
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
+
 			for text := range proxies {
 				client, err := newProxyClient(text)
 				if err != nil {
@@ -64,6 +65,7 @@ func check() {
 	for s.Scan() {
 		proxies <- s.Text()
 	}
+	close(proxies)
 
 	wg.Wait()
 	close(out)
