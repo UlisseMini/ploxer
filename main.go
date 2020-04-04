@@ -24,14 +24,17 @@ var subcommands = map[string]cmd{
 	},
 }
 
-// TODO: Make CLI flag.
-const workers = 16
+// TODO: Make CLI flags.
+const (
+	workers = 32
+	retries = 3
+)
 
 func check() {
 	var wg sync.WaitGroup
-	out := make(chan string)
+	working := make(chan string)
 	go func() {
-		for s := range out {
+		for s := range working {
 			fmt.Println(s)
 		}
 	}()
@@ -43,20 +46,24 @@ func check() {
 		go func() {
 			defer wg.Done()
 
-			for text := range proxies {
-				client, err := newProxyClient(text)
+			for proxy := range proxies {
+				client, err := newProxyClient(proxy)
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					continue
 				}
-				resp, err := client.Get("https://ifconfig.me")
-				if err != nil {
-					fmt.Fprintln(os.Stderr, err)
-					continue
-				}
-				resp.Body.Close()
 
-				out <- text
+				for i := 0; i < retries; i++ {
+					resp, err := client.Get("https://ifconfig.me")
+					if err != nil {
+						fmt.Fprintln(os.Stderr, err)
+						continue
+					}
+					resp.Body.Close()
+
+					working <- proxy
+					break
+				}
 			}
 		}()
 	}
@@ -68,7 +75,7 @@ func check() {
 	close(proxies)
 
 	wg.Wait()
-	close(out)
+	close(working)
 }
 
 func main() {
