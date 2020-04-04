@@ -52,7 +52,7 @@ func check() {
 				resp, err := client.Get("https://ifconfig.me")
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
-					return
+					continue
 				}
 				resp.Body.Close()
 
